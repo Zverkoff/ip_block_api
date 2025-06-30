@@ -44,6 +44,18 @@ logger.debug("Начало загрузки черного списка")
 blacklist = load_blacklist()
 logger.debug("Черный список загружен")
 
+@app.route('/', methods=['GET'])
+def index():
+    logger.debug("Запрос к / получен")
+    return jsonify({
+        'message': 'Сервис работает. Используйте /check-ip?ip=... или /health'
+    }), 200
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    logger.debug("Запрос к /health получен")
+    return jsonify({'status': 'ok'}), 200
+
 @app.route('/check-ip', methods=['GET'])
 def check_ip():
     client_ip = request.args.get('ip')
@@ -59,11 +71,6 @@ def check_ip():
     else:
         logger.info(f"IP {client_ip} разрешен")
         return jsonify({'blocked': False}), 200
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    logger.debug("Запрос к /health получен")
-    return jsonify({'status': 'ok'}), 200
 
 @app.route('/static/<path:filename>')
 def serve_static(filename):
