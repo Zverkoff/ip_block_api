@@ -2,19 +2,25 @@ from flask import Flask, request, jsonify
 import ipaddress
 import logging
 import os
+import sys
 
-# Настройка логирования (только в консоль)
+# Настройка логирования
 logging.basicConfig(
-    level=logging.DEBUG,  # Изменено на DEBUG для большей детализации
+    level=logging.DEBUG,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.StreamHandler()
+        logging.StreamHandler(sys.stdout)  # Явно указываем stdout
     ]
 )
 logger = logging.getLogger(__name__)
 
-logger.debug("Запуск приложения: инициализация Flask")
-app = Flask(__name__, static_folder='static')
+logger.debug("Начало инициализации приложения")
+try:
+    app = Flask(__name__, static_folder='static')
+    logger.debug("Flask инициализирован")
+except Exception as e:
+    logger.error(f"Ошибка при инициализации Flask: {e}")
+    raise
 
 # Отключаем Redis
 USE_REDIS = False
@@ -22,8 +28,8 @@ redis_client = None
 logger.debug("Redis отключен, используем локальное множество")
 
 # Логируем порт
-port = int(os.getenv('PORT', 5000))
-logger.debug(f"Переменная окружения PORT: {os.getenv('PORT')}")
+port = os.getenv('PORT', '5000')
+logger.debug(f"Переменная окружения PORT: {port}")
 logger.info(f"Приложение пытается запуститься на порту: {port}")
 
 # Путь к файлу с черным списком
@@ -52,10 +58,14 @@ def is_valid_ip(ip):
     except ValueError:
         return False
 
-# Загружаем черный список при старте
+# Загружаем черный список
 logger.debug("Начало загрузки черного списка")
-blacklist = load_blacklist()
-logger.debug("Черный список загружен")
+try:
+    blacklist = load_blacklist()
+    logger.debug("Черный список загружен")
+except Exception as e:
+    logger.error(f"Ошибка при загрузке черного списка: {e}")
+    raise
 
 @app.route('/check-ip', methods=['GET'])
 def check_ip():
@@ -90,4 +100,8 @@ def serve_static(filename):
 
 if __name__ == '__main__':
     logger.info(f"Запуск встроенного сервера Flask на порту {port}")
-    app.run(host='0.0.0.0', port=port)
+    try:
+        app.run(host='0.0.0.0', port=int(port))
+    except Exception as e:
+        logger.error(f"Ошибка при запуске Flask: {e}")
+        raise
