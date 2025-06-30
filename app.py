@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for
+from flask_cors import CORS
 import ipaddress
 import logging
 import os
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 logger.debug("Начало инициализации приложения")
 app = Flask(__name__, static_folder='static')
-logger.debug("Flask инициализирован")
+CORS(app, resources={r"/*": {"origins": "*"}})
+logger.debug("Flask и CORS инициализированы")
 
 # Путь к файлу с черным списком
 BLACKLIST_FILE = 'ip_blacklist.txt'
@@ -31,7 +33,7 @@ def load_blacklist():
     try:
         with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
             ips = {ip.strip() for ip in f if ip.strip() and is_valid_ip(ip.strip())}
-        logger.info(f"Загружено {len(ips)} IP‑адресов в локальное множество")
+        logger.info(f"Загружено {len(ips)} IP-адресов в локальное множество")
         return ips
     except FileNotFoundError:
         logger.error(f"Файл {BLACKLIST_FILE} не найден")
@@ -46,10 +48,8 @@ logger.debug("Черный список загружен")
 
 @app.route('/', methods=['GET'])
 def index():
-    logger.debug("Запрос к / получен")
-    return jsonify({
-        'message': 'Сервис работает. Используйте /check-ip?ip=... или /health'
-    }), 200
+    logger.debug("Запрос к /, перенаправление на /static/index.html")
+    return redirect(url_for('serve_static', filename='index.html'))
 
 @app.route('/health', methods=['GET'])
 def health_check():
