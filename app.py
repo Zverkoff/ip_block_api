@@ -46,6 +46,15 @@ logger.debug("Начало загрузки черного списка")
 blacklist = load_blacklist()
 logger.debug("Черный список загружен")
 
+# <-- добавьте этот блок прямо здесь:
+@app.before_request
+def block_bad_ips():
+    client_ip = request.remote_addr
+    if client_ip in blacklist:
+        logger.warning(f"Заблокирован IP {client_ip}")
+        return "Доступ запрещён", 403
+# <-- конец блока
+
 @app.route('/', methods=['GET'])
 def index():
     logger.debug("Запрос к /, перенаправление на /static/index.html")
@@ -76,3 +85,4 @@ def check_ip():
 def serve_static(filename):
     logger.debug(f"Запрос к статическому файлу: {filename}")
     return app.send_static_file(filename)
+
