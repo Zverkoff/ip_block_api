@@ -5,7 +5,7 @@ import os
 
 # Настройка логирования (только в консоль)
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Изменено на DEBUG для большей детализации
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler()
@@ -13,18 +13,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+logger.debug("Запуск приложения: инициализация Flask")
 app = Flask(__name__, static_folder='static')
 
 # Отключаем Redis
 USE_REDIS = False
 redis_client = None
-logger.info("Redis отключен, используем локальное множество")
+logger.debug("Redis отключен, используем локальное множество")
+
+# Логируем порт
+port = int(os.getenv('PORT', 5000))
+logger.debug(f"Переменная окружения PORT: {os.getenv('PORT')}")
+logger.info(f"Приложение пытается запуститься на порту: {port}")
 
 # Путь к файлу с черным списком
 BLACKLIST_FILE = 'ip_blacklist.txt'
 
 def load_blacklist():
     """Загружает IP-адреса из черного списка в множество."""
+    logger.debug(f"Попытка загрузки файла: {BLACKLIST_FILE}")
     try:
         with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
             ips = {ip.strip() for ip in f if ip.strip() and is_valid_ip(ip.strip())}
@@ -46,17 +53,20 @@ def is_valid_ip(ip):
         return False
 
 # Загружаем черный список при старте
+logger.debug("Начало загрузки черного списка")
 blacklist = load_blacklist()
+logger.debug("Черный список загружен")
 
 @app.route('/check-ip', methods=['GET'])
 def check_ip():
     """API для проверки IP-адреса."""
     client_ip = request.args.get('ip')
+    logger.debug(f"Запрос к /check-ip, IP: {client_ip}")
     if not client_ip or not is_valid_ip(client_ip):
+        logger.warning(f"Неверный IP-адрес: {client_ip}")
         return jsonify({'error': 'Неверный IP-адрес'}), 400
     
     logger.info(f"Проверка IP: {client_ip}")
-    
     is_blacklisted = client_ip in blacklist
     
     if is_blacklisted:
@@ -69,12 +79,15 @@ def check_ip():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Проверка состояния API."""
+    logger.debug("Запрос к /health получен")
     return jsonify({'status': 'ok'}), 200
 
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     """Раздача статических файлов (например, JavaScript)."""
+    logger.debug(f"Запрос к статическому файлу: {filename}")
     return app.send_static_file(filename)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    logger.info(f"Запуск встроенного сервера Flask на порту {port}")
+    app.run(host='0.0.0.0', port=port)
